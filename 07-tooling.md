@@ -1,24 +1,47 @@
 # Tooling (Azure CLI & Terraform)
 
-## Azure CLI
-A cross-platform command-line tool (Windows, macOS, Linux) to automate Azure resources.
+## 1. Azure CLI (Command-Line Interface)
+The Azure CLI is a cross-platform command-line tool (running on Windows, macOS, and Linux) used to create, manage, and automate Microsoft Azure resources. 
+While the Azure Portal provides a visual interface, the CLI is essential for DevOps engineers because it allows you to integrate infrastructure management directly into your CI/CD pipelines (like GitHub Actions or Azure DevOps) and automate repetitive tasks via scripts.
 
-**Common Commands**:
-- `az login` / `az login --use-device-code`: Authenticate.
-- `az account list --output table`: View subscriptions.
-- `az group create --name <name> --location centralindia`: Create a Resource Group.
-- `az vm list --output table`: List VMs.
-- `az network nsg rule list -g <rg> --nsg-name <nsg>`: View open ports.
+### Command Structure
+Commands follow a predictable, text-based pattern: `az [group] [subgroup] [action] [parameters]`
 
-## Terraform
-Infrastructure as Code (IaC) tool for multi-cloud provisioning.
-- **State Management**: Keeps track of resources in a `terraform.tfstate` file.
-- **Modularity**: Allows reuse of code for multiple environments.
+### Common Commands for Daily Operations
+- `az login --use-device-code`: Log in securely from a remote VM or terminal.
+- `az account list --output table`: View all your subscriptions in a readable format.
+- `az account show`: See which subscription is currently active in your CLI context.
+- `az group list --output table`: List all Resource Groups.
+- `az group create --name <name> --location centralindia`: Create a new Resource Group.
+- `az vm list --output table`: List your VMs and their status.
+- `az network nsg rule list -g <rg> --nsg-name <nsg>`: View your open firewall ports.
 
-**Common Commands**:
-- `terraform init`: Downloads the Azure provider and initializes the backend.
-- `terraform plan`: Dry run showing what will be created/changed/deleted.
-- `terraform apply`: Executes the changes.
-- `terraform destroy`: Permanently deletes the resources.
-- `terraform fmt`: Fixes formatting.
-- `terraform validate`: Checks syntax errors.
+---
+
+## 2. Terraform (Infrastructure as Code)
+Terraform is an Infrastructure as Code (IaC) tool created by HashiCorp. It allows you to define your cloud infrastructure (VNets, AKS clusters, Databases) in human-readable code files (`.tf`), and automatically provision them.
+
+### Why use Terraform?
+- **Multi-Cloud Support**: While ARM templates or Bicep only work for Azure, Terraform can provision resources across Azure, AWS, and GCP.
+- **State Management**: Terraform uses a `terraform.tfstate` file to keep track of the exact state of your resources. This allows it to know exactly what needs to be added, changed, or deleted without recreating the entire environment.
+- **Reusability and Modularity**: You can use the exact same codebase to spin up identical `dev`, `staging`, and `prod` environments by simply passing different variable files, maintaining separate state files for each.
+
+### The Core Terraform Workflow
+1. `terraform init`
+   - **When**: Run this first.
+   - **What**: Downloads the required "provider" plugins (like the Azure provider) and initializes the backend where your state file will be stored.
+2. `terraform plan`
+   - **When**: Every time you change your `.tf` code.
+   - **What**: A "dry run" that compares your code against the current state and shows you exactly what will be created, modified, or destroyed.
+3. `terraform apply`
+   - **When**: When the plan looks correct.
+   - **What**: Executes the changes via the Azure API and updates your `terraform.tfstate` file.
+4. `terraform destroy`
+   - **When**: When you want to tear down an environment.
+   - **Warning**: This will permanently delete everything defined in your code from Azure.
+
+### Utility Commands
+- `terraform fmt`: Automatically formats your `.tf` files to ensure proper spacing and indentation.
+- `terraform validate`: Checks your code for syntax errors without needing to communicate with Azure.
+- `terraform show`: Displays the current state of your infrastructure in a readable format.
+- `terraform state list`: Shows every individual resource Terraform is currently tracking in its memory.
