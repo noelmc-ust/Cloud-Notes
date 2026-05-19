@@ -3,13 +3,23 @@
 ## Azure Compute Spectrum
 Azure provides a spectrum of compute options, trading off between the level of control you need versus the amount of infrastructure management you want to offload to Azure.
 
-From **Highest Control** (Work More) to **Highest Automation** (Work Less):
-1. **Virtual Machines (IaaS)**: Legacy or lift-and-shift workloads. You have full control and full responsibility for the OS, patching, and networking. It is the cloud version of an on-prem server.
-2. **App Service (PaaS)**: Managed runtime. Great for simple web apps. You have no VM management; you just focus on your code and deployment.
-3. **Azure Container Instances (ACI)**: Serverless containers. Ideal for quick, one-off container runs or batch jobs without provisioning a cluster.
-4. **Azure Container Apps**: Serverless microservices platform built on AKS, but without the complexity of managing Kubernetes yourself.
-5. **AKS (Azure Kubernetes Service)**: Full microservices orchestration platform. Provides immense power and scalability but requires deep networking and operational knowledge.
-6. **Azure Functions (FaaS)**: Event-driven architecture. "Run this code when something happens." You don't think about infrastructure at all.
+### The Control vs Automation Continuum
+```text
+VMs → App Service → Container Apps → AKS → Functions
+ ↑ control                        ↑ automation
+Work more                                     work less
+Control more                              control less
+```
+
+### Detailed Breakdown
+- **Virtual Machines (VMs)**: Legacy or lift-and-shift workloads. You have full control and full responsibility for the OS, patching, and networking. It is the cloud version of an on-prem server.
+- **App Service (PaaS)**: Managed runtime. Great for simple web apps. You have no VM management; you just focus on your code and deployment.
+- **Azure Container Instances (ACI)**: Serverless containers. Ideal for quick, one-off container runs.
+- **Azure Container Apps**: Serverless microservices platform built on AKS, but without the complexity of managing Kubernetes yourself.
+- **AKS (Azure Kubernetes Service) (YOU ARE HERE)**: Full microservices orchestration platform. Provides immense power and scalability but requires deep networking and operational knowledge.
+- **Azure Functions (FaaS)**: Event-driven architecture. "Run this code when something happens." You don't think about infrastructure at all.
+- **Azure Batch**: Used specifically for HPC (High Performance Computing) workloads and parallel jobs.
+- **VMware Solution**: Used primarily for Enterprise migrations moving whole datacenter VMware environments to the cloud natively.
 
 ---
 

@@ -2,10 +2,27 @@
 
 To understand Azure networking, you must look past the Azure Portal and understand the "Silicon and Software" layer. Azure operates entirely on a **Software-Defined Network (SDN)**. When you create subnets, peer VNets, or change route tables, you aren't actually re-cabling anything. Everything is a dance between the Control Plane (the Brain) and the Data Plane (the Muscle).
 
-## 1. The Data Plane: VFP (Virtual Filtering Platform)
+## 1. OSI Layers in Azure Networking (L1 - L7)
+When traffic segments and travels, it moves through the OSI stack:
+- **Layer 1 (Physical)**: The actual fiber optic cables and physical NICs in the datacenter.
+- **Layer 2 (Data Link)**: MAC addresses and vSwitches.
+- **Layer 2.5 (Encapsulation)**: VXLAN/NVGRE. This is where the magic happens. The private IP packet is wrapped in a physical host packet.
+- **Layer 3 (Network)**: The IP routing decisions. VFP checks the destination IP and decides where it goes.
+- **Layer 4 (Transport)**: TCP/UDP ports. Azure Load Balancers operate here.
+- **Layer 7 (Application)**: HTTP/HTTPS, URLs. Application Gateways operate here.
+
+### VXLAN: How it works in L2 and L3
+When going from L2 to L3, how does the traffic segment and travel, and in what form? 
+Azure uses **VXLAN (Virtual Extensible LAN)** or **NVGRE** for tunneling. 
+- **The Mode / Form**: Traffic travels by taking the entire Layer 2 Ethernet frame of the virtual machine and encapsulating it inside a Layer 3 UDP packet (VXLAN) sent between the physical hosts. 
+- This allows Layer 2 network topologies (like a continuous subnet) to be stretched over a highly scalable Layer 3 underlying datacenter network.
+
+---
+
+## 2. The Data Plane: VFP (Virtual Filtering Platform)
 The **Virtual Filtering Platform (VFP)** is the core of Azure's Data Plane. It is a highly optimized, programmable virtual switch that runs on every single physical host (server) in every Azure datacenter, sitting inside the Hyper-V layer.
 
-- **The Match-Action Engine**: VFP sits exactly between the physical Network Interface Card (NIC) of the server and the virtual NIC (vNIC) of your Virtual Machine (or AKS node). 
+- **The Match-Action Engine**: VFP sits exactly between the physical Network Interface Card (NIC) of the server and the virtual NIC (vNIC) of your Virtual Machine. 
 - For every single packet that leaves or enters a VM, VFP asks:
   1. **Match**: Does this packet (IP, Port, Protocol) match any rule I have?
   2. **Action**: Should I Allow, Deny, Encapsulate (wrap it for a VNet), or Translate (NAT) it?
@@ -21,7 +38,7 @@ VFP performs **Stateful Inspection**. If you allow an outbound request from your
 
 ---
 
-## 2. The Control Plane: Host Agent & Network Controller
+## 3. The Control Plane: Host Agent & Network Controller
 
 ### The Azure Directory (The Phonebook)
 Where does VFP get its mapping data? The mappings live in a massive, globally distributed database called the **Azure Directory Service**.
@@ -40,10 +57,12 @@ There is one **Host Agent** per physical server.
 
 ---
 
-## 3. The Packet Journey: "Layer 2.5" Encapsulation
+## 4. The Packet Journey: From Internet to VM
+When external traffic hits your app, the flow looks exactly like this:
+**Internet -> Public IP -> Azure SDN (VFP/Load Balancer) -> Private IP -> vNIC -> VM**
 
+### The Internal Packet Journey (Layer 2.5 Encapsulation)
 How does a packet travel from VM-A on Server 1 to VM-B on Server 2?
-
 1. **The Departure**: VM-A sends a packet to `10.0.2.5` (VM-B). The packet hits the vNIC and enters the VFP on Host 1.
 2. **The Lookup**: VFP checks its Flow Table. It sees that `10.0.2.5` is located on Physical Host 2.
 3. **Encapsulation (Layer 2.5)**: VFP takes the original packet and wraps it in a **VXLAN (or NVGRE)** envelope.
@@ -53,11 +72,9 @@ How does a packet travel from VM-A on Server 1 to VM-B on Server 2?
 4. **The Wire**: The packet travels across the physical datacenter switches. The physical routers only care about the Outer header (the physical hosts). They don't even know there is a VM inside.
 5. **The Arrival**: Host 2's VFP receives the packet, recognizes the VXLAN header, "unwraps" the envelope, checks the Inbound NSG rules, and places the bare packet onto VM-B’s vNIC. To VM-B, it looks like the packet just arrived locally.
 
-*Note: For VNet Peering, the exact same process happens. The Controller just pushes the destination VNet's Host IP mappings to the source VFP. The packet is encapsulated and travels directly Host-to-Host over the Microsoft backbone without hitting a centralized router.*
-
 ---
 
-## 4. Accelerated Networking & FPGAs (Hardware Bypass)
+## 5. Accelerated Networking & FPGAs (Hardware Bypass)
 
 Normally, the VFP runs in the CPU of the physical host (Software Path), which costs CPU cycles and adds latency.
 
