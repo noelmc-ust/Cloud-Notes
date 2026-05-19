@@ -40,6 +40,75 @@ A common misconception is that the Pre-Shared Key (PSK) you type in the portal i
    - Keys expire (e.g., every 1 hour). 
    - With PFS enabled, the gateways run a brand-new Diffie-Hellman exchange from scratch for Phase 2. This ensures that even if an attacker compromises an old key, they cannot mathematically deduce the new keys.
 
+
+Step 1: The Interesting Traffic Trigger
+An IPsec tunnel doesn't just stay active all the time by default; it usually needs a reason to spin up.
+
+What happens: A computer on Network A tries to send a packet to a computer on Network B (e.g., pinging a private IP across the cloud/on-prem boundary).
+
+The Match: The local VPN gateway intercepts this packet and checks its Crypto ACL (Access Control List) or Traffic Selector.
+
+The Result: If the source and destination IPs match the policy, the router marks this as "Interesting Traffic" and realizes it needs to build a secure tunnel to forward it.
+
+Step 2: IKE Phase 1 – Negotiation (The Proposal)
+Before the two gateways can talk securely, they have to agree on how they are going to talk. The initiating gateway sends a list of cryptographic options to the responding gateway.
+
+They must find a matching match for four main parameters (often remembered by the acronym HAGLE):
+
+Hash: The algorithm used for data integrity (e.g., SHA-256).
+
+Authentication: How they will prove their identities (e.g., Pre-Shared Key or Digital Certificates).
+
+Group: The Diffie-Hellman (DH) group, which determines the strength of the keys they will make (e.g., Group 14, Group 19).
+
+Lifetime: How long this management session will last before expiring.
+
+Encryption: The algorithm used to protect this management traffic (e.g., AES-256).
+
+Step 3: IKE Phase 1 – Diffie-Hellman Key Exchange & Authentication
+Once they agree on the cryptographic parameters, they build the secure management channel.
+
+The DH Exchange: The gateways exchange public Diffie-Hellman values. Using these public values and their own private values, both sides mathematically calculate the exact same secret master key (SKEYID). No keys are actually sent over the internet.
+
+Authentication: The gateways use the configured Pre-Shared Key (PSK) or certificates to sign a hash of the exchange. If both sides can successfully decrypt and verify the signature, they have authenticated each other.
+
+The Result: A secure, bi-directional management tunnel called the IKE Phase 1 SA (Security Association) or ISAKMP SA is established. All future management messages are now encrypted.
+
+Step 4: IKE Phase 2 – Negotiating the Data Tunnel (Quick Mode)
+Now that the gateways have a secure "private room" to talk in, they negotiate the actual tunnel that will carry the real user data. This is called Quick Mode.
+
+Inside the protected Phase 1 tunnel, they negotiate:
+
+IPsec Protocol: Usually ESP (Encapsulating Security Payload), which encrypts the data, rather than AH (Authentication Header), which only signs it.
+
+Encryption & Hash: The specific AES and SHA variations used for the actual user data (these can be different from Phase 1).
+
+PFS (Perfect Forward Secrecy): If enabled, the gateways will force a brand-new Diffie-Hellman key exchange right now to ensure Phase 2 keys are completely independent of Phase 1 keys.
+
+Step 5: Establishing the IPsec Data Tunnel
+Once Phase 2 negotiations are complete, the gateways create two uni-directional tunnels (one for inbound traffic, one for outbound traffic). These are called IPsec SAs.
+
+Each IPsec SA is assigned a unique identifier called an SPI (Security Parameter Index). When a gateway encrypts a packet, it stamps it with the SPI so the receiving gateway instantly knows which cryptographic keys and parameters to use to decrypt it.
+
+Step 6: Data Transfer (The Active Tunnel)
+The tunnel is now fully established and functional.
+
+The original packet from Step 1 is encapsulated.
+
+The ESP header is attached (which includes the SPI).
+
+The entire original packet (payload and original IP headers) is completely encrypted.
+
+A New IP Header is slapped on the outside, using the public IP addresses of the two VPN gateways as the source and destination.
+
+The packet travels across the public internet safely. When it hits the remote gateway, it is decrypted and forwarded to its final destination network.
+
+Step 7: Tunnel Teardown or Rekeying
+The tunnel will not stay open indefinitely.
+
+Rekeying: Before the Phase 1 or Phase 2 lifetimes expire (or after a certain amount of gigabytes have passed), the gateways will quietly spin up a new negotiation in the background to create fresh keys, ensuring data flow is never interrupted.
+
+Teardown: If no traffic passes through the tunnel for an extended period (Idle Timeout), or if DPD (Dead Peer Detection) notices that the other side has gone offline, the gateways will tear down the SAs and clear the memory caches until "Interesting Traffic" triggers the process all over again.
 ---
 
 ## Load Balancer vs Application Gateway
